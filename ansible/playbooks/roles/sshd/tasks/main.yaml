@@ -1,0 +1,85 @@
+---
+# SSHD settings
+
+- name: 'Disable X11Forwarding'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?X11Forwarding'
+    line: 'X11Forwarding no'
+  notify: 'Restart sshd service'
+
+- name: 'Disable DNS resolving'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?UseDNS'
+    line: 'UseDNS no'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Enable public key authentication'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Disable password authentication'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Disable legasy Rhost authenication'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?IgnoreRhosts'
+    line: 'IgnoreRhosts yes'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Set maxmimum authentication attempts'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?MaxAuthTries'
+    line: 'MaxAuthTries 5'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Disable root loging via ssh'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Check AllowUsers setting'
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    regexp: '^AllowUsers.*'
+    state: absent
+  check_mode: yes
+  changed_when: false
+  register: line
+
+- name: 'Add settings AllowUsers'
+  when: not line.found | bool
+  ansible.builtin.lineinfile:
+    path: '/etc/ssh/sshd_config'
+    line: 'AllowUsers'
+    state: present
+  notify: 'Restart sshd service'
+
+- name: 'Add user to AllowUsers'
+  ansible.builtin.replace:
+    backup: no
+    dest: '/etc/ssh/sshd_config'
+    regexp: '^(AllowUsers(?!.*\b{{ item }}\b).*)$'
+    replace: '\1 {{ item }}'
+    validate: 'sshd -T -f %s'
+  with_items:
+    - ansible
+  notify: 'Restart sshd service'

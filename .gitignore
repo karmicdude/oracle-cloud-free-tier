@@ -1,0 +1,31 @@
+# Editors
+/*.*-workspace
+/*.*-project
+## Vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history
+## vim/nvim
+*~
+## Idea
+.idea/
+
+# Terraform
+**/.terraform/*
+
+# Ansible
+ansible/**/.vault
+ansible/**/.known_hosts
+ansible/**/.token
+ansible/**/.password
+ansible/**/.instances
+/ansible/.facts_cache/
+/ansible/.retry
+
+# Other
+.DS_Store
+*.log
+.wireguard

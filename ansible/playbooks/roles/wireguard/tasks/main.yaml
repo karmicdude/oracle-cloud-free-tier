@@ -1,0 +1,52 @@
+---
+
+- name: 'Run wireguard server'
+  community.docker.docker_container:
+    name: '{{ wireguard.container_name | default("wireguard") }}'
+    image: 'ghcr.io/linuxserver/wireguard:{{ wireguard.image_tag | default("latest") }}'
+    capabilities:
+      - NET_ADMIN
+      - SYS_MODULE
+    env:
+      PUID: '1000'
+      PGID: '1000'
+      TZ: '{{ timezone | default("Asia/Yakutsk") }}'
+      SERVERURL: '{{ wireguard.serverurl | default(ansible_host) }}'
+      SERVERPORT: '{{ wireguard.port | default("51820") }}'
+      PEERS: '{{ wireguard.peers | join(",") }}'
+      PEERDNS: auto
+      INTERNAL_SUBNET: '{{ wireguard.subnet | default("10.13.13.0") }}'
+      ALLOWEDIPS: '{{ wireguard.allowedips | default("0.0.0.0/0") }}'
+    volumes:
+      - '{{ wireguard.file_path | default("/opt/wireguard") }}/files/config:/config'
+      - /lib/modules:/lib/modules
+    ports:
+      - '{{ wireguard.port | default("51820") }}:51820/udp'
+    sysctls:
+      net.ipv4.conf.all.src_valid_mark: 1
+    restart_policy: 'unless-stopped'
+
+- name: 'Ensure that rsync is installed'
+  ansible.builtin.apt:
+    name: 'rsync'
+    state: '{{ packages_state | default("present", true) }}'
+    update_cache: yes
+
+- name: 'Ensure that the peers dest folder exists'
+  ansible.builtin.file:
+    path: '{{ wireguard.sync_path | default(sync_path) }}'
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  become: no
+  vars:
+    sync_path: '{{ ansible_config_file | dirname }}/.wireguard/peers'
+
+- name: 'Fetch peers configs'
+  ansible.posix.synchronize:
+    mode: pull
+    src: '{{ wireguard.file_path }}/files/config/peer_*'
+    dest: '{{ wireguard.sync_path | default(sync_path) }}'
+    delete: yes
+  vars:
+    sync_path: '{{ ansible_config_file | dirname }}/.wireguard/peers'

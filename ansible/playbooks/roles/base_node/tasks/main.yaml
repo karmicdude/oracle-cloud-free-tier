@@ -1,0 +1,80 @@
+---
+
+- name: 'Run dist-upgrade'
+  when: '"run_upgrade" in ansible_run_tags'
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 600
+    upgrade: full
+    autoremove: yes
+  notify: 'Reboot system'
+  tags:
+    - run_upgrade
+
+- name: 'Flush handlers'
+  ansible.builtin.meta: flush_handlers
+
+- name: 'Remove unused packages'
+  ansible.builtin.apt:
+    name:
+      - vim-tiny
+    state: absent
+
+- name: 'Install packages'
+  ansible.builtin.apt:
+    name:
+      - bash-completion
+      - conntrack
+      - dnsutils
+      - ethtool
+      - gawk
+      - htop
+      - iotop
+      - lsof
+      - moreutils
+      - mtr
+      - net-tools
+      - nmap
+      - strace
+      - tcpdump
+      - telnet
+      - vim
+      - whois
+      - kitty-terminfo
+    state: '{{ packages_state | default("present", true) }}'
+    update_cache: yes
+    cache_valid_time: 600
+
+- name: 'Set timezone'
+  community.general.timezone:
+    name: '{{ timezone | default("Asia/Yakutsk", true) }}'
+
+- name: 'Create timesyncd config'
+  ansible.builtin.template:
+    src: 'timesyncd.conf.j2'
+    dest: '/etc/systemd/timesyncd.conf'
+    mode: 0644
+    owner: root
+    group: root
+  notify: 'Restart systemd-timesyncd'
+
+- name: Start and enable systemd-timesyncd
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    enabled: yes
+    state: started
+
+- name: 'Set hostname'
+  ansible.builtin.hostname:
+    name: '{{ inventory_hostname }}'
+
+- name: 'Configure /etc/hosts'
+  ansible.builtin.lineinfile:
+    path: '/etc/hosts'
+    regexp: '127.0.1.1.*'
+    line: '127.0.1.1 {{ inventory_hostname }}'
+
+- name: 'Change root password'
+  ansible.builtin.user:
+    name: root
+    password: '{{ root_password | password_hash("sha512") }}'

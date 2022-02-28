@@ -1,0 +1,31 @@
+---
+- hosts: '{{ target | default("wireguard") }}'
+  become: yes
+  roles:
+    - name: 'roles/ansible_user'
+      tags: 'ansible_user'
+    - name: 'roles/base_node'
+      tags: 'base_node'
+    - name: 'roles/sshd'
+      tags: 'sshd'
+    - name: 'roles/docker'
+      tags: 'docker'
+    - name: 'roles/wireguard'
+      tags: 'wireguard'
+  vars:
+    timezone: 'Europe/Moscow'
+    wireguard:
+      peers:
+        - MacDesktop
+        - MacBook
+        - AndroidPhone
+        - OtherPeerName
+      # Возможные переменные со значениями по-умолчанию:
+      # container_name: 'wireguard'
+      # image_tag: 'latest'
+      # serverurl: '{{ ansible_host }}'
+      # port: '51820'
+      # sync_path: '<repo_path>/ansible/.wireguard/peers'
+      # subnet: '10.13.13.0'
+      # allowedips: '0.0.0.0/0'
+      # file_path: '/opt/wireguard'

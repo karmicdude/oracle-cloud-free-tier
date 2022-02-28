@@ -1,0 +1,71 @@
+---
+# Add Ansible user
+# If it is the first run:
+# ansible-playbook -k -e "target=target ansible_ssh_user=root" /path/to/play -t ansible_user
+
+- name: 'Update apt cache'
+  ansible.builtin.apt:
+    name: sudo
+    state: present
+    update_cache: yes
+    cache_valid_time: 600
+
+- name: 'Present "sudo" group'
+  ansible.builtin.group:
+    name: sudo
+    state: present
+
+- name: 'Create "ansible" user'
+  ansible.builtin.user:
+    name: ansible
+    comment: Ansible User
+    system: yes
+    groups: sudo
+    append: yes
+    shell: '/bin/bash'
+
+- name: 'Create .ssh dir'
+  ansible.builtin.file:
+    path: '~ansible/.ssh'
+    state: directory
+    owner: ansible
+    group: ansible
+    mode: 0700
+
+- name: 'Check authorized_keys file for "ansible" user'
+  ansible.posix.authorized_key:
+    user: ansible
+    state: present
+    key: '{{ lookup("file", ansible_ssh_private_key_file + ".pub") }}'
+
+- name: 'Add "ansible" user to sudoers with nopasswd'
+  ansible.builtin.lineinfile:
+    path: '/etc/sudoers'
+    state: present
+    regexp: '^ansible'
+    line: 'ansible ALL=(ALL) NOPASSWD: ALL'
+    validate: '/usr/sbin/visudo -cf %s'
+
+- name: 'Add "ansible" user to AllowUsers'
+  ansible.builtin.replace:
+    dest: '/etc/ssh/sshd_config'
+    regexp: '^(AllowUsers(?!.*\bansible\b).*)$'
+    replace: '\1 ansible'
+    validate: '/usr/sbin/sshd -T -f %s'
+    backup: no
+  notify: 'Restart sshd service'
+
+- name: 'Flush handlers'
+  ansible.builtin.meta: flush_handlers
+
+- name: 'Change connection user'
+  ansible.builtin.set_fact:
+    ansible_ssh_user: ansible
+    ansible_user: ansible
+
+- name: 'Remove "ubuntu" user'
+  ansible.builtin.user:
+    name: ubuntu
+    state: absent
+    remove: yes
+    force: yes
